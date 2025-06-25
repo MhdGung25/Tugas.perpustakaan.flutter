@@ -1,5 +1,3 @@
-// ignore_for_file: use_build_context_synchronously
-
 import 'dart:convert';
 import 'dart:developer';
 import 'package:flutter/material.dart';
@@ -82,7 +80,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
       if (!mounted) return;
 
       final decoded = response is String ? jsonDecode(response) : response;
-
       log("Reset password response: $decoded");
 
       if (decoded['success'] == true) {
@@ -99,8 +96,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
       }
     } catch (e) {
       log("Reset password error: $e");
-
-      // Simulasi sukses sementara
       setState(() => isEmailSent = true);
       _showSnackBar(
         'Link reset password telah dikirim ke email Anda',
@@ -136,25 +131,17 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Email Terdaftar',
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
-            color: Color(0xFF2C3E50),
-          ),
-        ),
+        const Text('Email', style: TextStyle(fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
         TextFormField(
           controller: _emailController,
           keyboardType: TextInputType.emailAddress,
-          textInputAction: TextInputAction.done,
           validator: _validateEmail,
+          textInputAction: TextInputAction.done,
           onFieldSubmitted: (_) => _resetPassword(),
           decoration: const InputDecoration(
             hintText: 'Masukkan email yang terdaftar',
-            hintStyle: TextStyle(color: Colors.grey),
-            prefixIcon: Icon(Icons.email_outlined, color: Color(0xFF4FC3F7)),
+            prefixIcon: Icon(Icons.email_outlined, color: Color(0xFF0C5FA3)),
           ),
         ),
       ],
@@ -162,52 +149,26 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
   }
 
   Widget _buildResetButton() {
-    return Container(
-      width: double.infinity,
-      height: 52,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF4FC3F7), Color(0xFF64B5F6)],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF4FC3F7).withOpacity(0.3),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
+    return ElevatedButton(
+      onPressed: isLoading ? null : _resetPassword,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF0C5FA3),
+        foregroundColor: Colors.white,
+        minimumSize: const Size(double.infinity, 50),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
       ),
-      child: ElevatedButton(
-        onPressed: isLoading ? null : _resetPassword,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        child:
-            isLoading
-                ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                  ),
-                )
-                : const Text(
-                  "Kirim Link Reset",
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
+      child:
+          isLoading
+              ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                 ),
-      ),
+              )
+              : const Text("Kirim Link Reset"),
     );
   }
 
@@ -232,7 +193,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF0288D1),
+            color: Color(0xFF0C5FA3),
           ),
         ),
         const SizedBox(height: 12),
@@ -243,13 +204,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
         ),
         const SizedBox(height: 24),
         TextButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
+          onPressed: () => Navigator.of(context).pop(),
           child: const Text(
             'Kembali ke Login',
             style: TextStyle(
-              color: Color(0xFF0288D1),
+              color: Color(0xFF0C5FA3),
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -261,49 +220,66 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF0C5FA3),
       appBar: AppBar(
-        title: const Text("Lupa Password"),
-        backgroundColor: Colors.lightBlueAccent,
+        backgroundColor: const Color(0xFF0C5FA3),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: const Text(
+          'Lupa Password',
+          style: TextStyle(color: Colors.white),
+        ),
+        centerTitle: true,
       ),
-      body: FadeTransition(
-        opacity: _fadeAnimation,
-        child: SlideTransition(
-          position: _slideAnimation,
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Center(
-              child: SingleChildScrollView(
-                child:
-                    isEmailSent
-                        ? _buildSuccessView()
-                        : Form(
-                          key: _formKey,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              const Text(
-                                'Reset Kata Sandi',
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF0288D1),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Card(
+            elevation: 10,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: SlideTransition(
+                  position: _slideAnimation,
+                  child:
+                      isEmailSent
+                          ? _buildSuccessView()
+                          : Form(
+                            key: _formKey,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                const Text(
+                                  'Reset Kata Sandi',
+                                  style: TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF0C5FA3),
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 16),
-                              const Text(
-                                'Masukkan email yang terdaftar, kami akan mengirimkan link untuk reset kata sandi.',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.black54,
+                                const SizedBox(height: 16),
+                                const Text(
+                                  'Masukkan email yang terdaftar. Kami akan mengirim link reset ke email Anda.',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.black54,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 24),
-                              _buildEmailField(),
-                              const SizedBox(height: 24),
-                              _buildResetButton(),
-                            ],
+                                const SizedBox(height: 24),
+                                _buildEmailField(),
+                                const SizedBox(height: 24),
+                                _buildResetButton(),
+                              ],
+                            ),
                           ),
-                        ),
+                ),
               ),
             ),
           ),

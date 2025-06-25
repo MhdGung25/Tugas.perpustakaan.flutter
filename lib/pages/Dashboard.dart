@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:librarp_digital/pages/Pengembalian.dart';
-import 'package:librarp_digital/pages/HomePage.dart';
-import 'package:librarp_digital/pages/buku.dart';
-import 'package:librarp_digital/pages/ProfilePage.dart';
-import 'package:librarp_digital/pages/Pinjaman.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'homepage.dart';
 
 class DashboardPage extends StatefulWidget {
   final String namaAnggota;
@@ -11,66 +8,50 @@ class DashboardPage extends StatefulWidget {
   final String anggotaId;
 
   const DashboardPage({
-    Key? key,
+    super.key,
     required this.namaAnggota,
     required this.token,
     required this.anggotaId,
-  }) : super(key: key);
+  });
 
   @override
-  _DashboardPageState createState() => _DashboardPageState();
+  State<DashboardPage> createState() => _DashboardPageState();
 }
 
 class _DashboardPageState extends State<DashboardPage> {
-  int _selectedIndex = 0;
-  late List<Widget> _pages;
-
   @override
   void initState() {
     super.initState();
-    _pages = [
-      Homepage(
-        title: 'Beranda',
-        namaAnggota: widget.namaAnggota,
-        token: widget.token,
-        anggotaId: widget.anggotaId,
-      ),
-      const BukuPage(title: 'Buku'),
-      const PinjamanPage(title: 'Pinjaman', selectedBooks: []),
-      const PengembalianPage(title: "Pengembalian"),
-      const ProfilePage(),
-    ];
+    _navigateToHomepage();
   }
 
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+  Future<void> _navigateToHomepage() async {
+    // Small delay to show loading indicator
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    if (!mounted) return;
+
+    // Navigate to Homepage using the passed parameters
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder:
+            (context) => Homepage(
+              namaAnggota: widget.namaAnggota,
+              anggotaId: widget.anggotaId,
+            ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: _pages[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        selectedItemColor: Colors.blue,
-        unselectedItemColor: Colors.grey,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Beranda'),
-          BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: 'Buku'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.assignment),
-            label: 'Pinjaman',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.assignment_turned_in),
-            label: 'Pengembalian',
-          ),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
-        ],
+    return const Scaffold(
+      backgroundColor: Colors.white,
+      body: Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(Colors.blueAccent),
+        ),
       ),
     );
   }

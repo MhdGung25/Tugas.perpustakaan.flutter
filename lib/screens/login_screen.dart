@@ -1,89 +1,13 @@
 import 'dart:convert';
 import 'dart:developer';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:librarp_digital/screens/register_screen.dart';
-import 'package:librarp_digital/model/user_model.dart';
 import 'package:librarp_digital/pages/dashboard.dart';
+import 'package:librarp_digital/model/user_model.dart';
 import 'package:librarp_digital/service/api.dart';
 import 'package:librarp_digital/service/networking.dart';
-
-void main() {
-  WidgetsFlutterBinding.ensureInitialized();
-  runApp(const MyApp());
-}
-
-class Session {
-  Future<void> putInt(String key, int value) async {
-    final prefs = await SharedPreferences.getInstance();
-    prefs.setInt(key, value);
-  }
-
-  Future<void> putString(String key, String value) async {
-    final prefs = await SharedPreferences.getInstance();
-    prefs.setString(key, value);
-  }
-
-  Future<int?> getInt(String key) async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt(key);
-  }
-
-  Future<String?> getString(String key) async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(key);
-  }
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Library Digital',
-      theme: ThemeData(
-        primaryColor: const Color(0xFF0C5FA3),
-        scaffoldBackgroundColor: Colors.white,
-        fontFamily: 'Arial',
-        textTheme: const TextTheme(bodyMedium: TextStyle(fontSize: 16)),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: Colors.grey[100],
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10.0),
-            borderSide: BorderSide(color: Colors.grey.shade300),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10.0),
-            borderSide: const BorderSide(color: Color(0xFF0C5FA3)),
-          ),
-          contentPadding: const EdgeInsets.symmetric(
-            vertical: 16.0,
-            horizontal: 16.0,
-          ),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF0C5FA3),
-            foregroundColor: Colors.white,
-            minimumSize: const Size(double.infinity, 50),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-            textStyle: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-      ),
-      home: const LoginPage(),
-    );
-  }
-}
+import 'package:librarp_digital/screens/forgot_password_screen.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -106,7 +30,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-
     _logoController = AnimationController(
       duration: const Duration(seconds: 1),
       vsync: this,
@@ -152,29 +75,26 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
     try {
       final response = await networkHelper.postRequest();
-
       if (response == null) {
         _showSnackBar('Gagal terhubung ke server. Periksa koneksi jaringan.');
         return;
       }
 
-      final decodedResponse =
-          response is String ? jsonDecode(response) : response;
-      final data = UserModel.fromJson(decodedResponse);
+      final decoded = response is String ? jsonDecode(response) : response;
+      final data = UserModel.fromJson(decoded);
 
       if (data.accessToken != null && data.user != null) {
-        final session = Session();
-        await session.putString("access_token", data.accessToken!);
-        await session.putInt("id_user", data.user!.idUser ?? 0);
-        await session.putString("email", data.user!.email ?? "");
-        await session.putString("nama_lengkap", data.user!.namaLengkap ?? "");
-        await session.putInt("level", data.user!.level ?? 0);
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString("access_token", data.accessToken!);
+        await prefs.setInt("id_user", data.user!.idUser ?? 0);
+        await prefs.setString("email", data.user!.email ?? "");
+        await prefs.setString("nama_lengkap", data.user!.namaLengkap ?? "");
+        await prefs.setInt("level", data.user!.level ?? 0);
 
-        // Tambahkan ini jika ada anggota_id di response
-        if (decodedResponse['anggota'] != null) {
-          await session.putString(
+        if (decoded['anggota'] != null) {
+          await prefs.setString(
             "anggota_id",
-            decodedResponse['anggota']['id'].toString(),
+            decoded['anggota']['id'].toString(),
           );
         }
 
@@ -204,40 +124,9 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   void _showSnackBar(String message) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-        ),
+        SnackBar(content: Text(message), backgroundColor: Colors.redAccent),
       );
     }
-  }
-
-  Widget _buildPasswordField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Password', style: TextStyle(fontWeight: FontWeight.w600)),
-        const SizedBox(height: 8),
-        TextField(
-          controller: _passwordController,
-          obscureText: !_isPasswordVisible,
-          decoration: InputDecoration(
-            hintText: 'Masukkan password',
-            suffixIcon: IconButton(
-              icon: Icon(
-                _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
-              ),
-              onPressed: () {
-                setState(() {
-                  _isPasswordVisible = !_isPasswordVisible;
-                });
-              },
-            ),
-          ),
-        ),
-      ],
-    );
   }
 
   Widget _buildInputField(
@@ -261,26 +150,70 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildLoginButton() {
-    return ElevatedButton(onPressed: _login, child: const Text("Masuk"));
+  Widget _buildPasswordField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Password', style: TextStyle(fontWeight: FontWeight.w600)),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _passwordController,
+          obscureText: !_isPasswordVisible,
+          decoration: InputDecoration(
+            hintText: 'Masukkan password',
+            suffixIcon: IconButton(
+              icon: Icon(
+                _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+              ),
+              onPressed:
+                  () =>
+                      setState(() => _isPasswordVisible = !_isPasswordVisible),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
-  Widget _buildRegisterLink() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+  Widget _buildLoginButton() {
+    return ElevatedButton(
+      onPressed: isLoading ? null : _login,
+      child: const Text("Masuk"),
+    );
+  }
+
+  Widget _buildBottomLinks() {
+    return Column(
       children: [
-        const Text("Belum punya akun?"),
         TextButton(
           onPressed: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const RegisterScreen()),
+              MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
             );
           },
           child: const Text(
-            'Daftar',
-            style: TextStyle(fontWeight: FontWeight.bold),
+            "Lupa Password?",
+            style: TextStyle(color: Colors.redAccent),
           ),
+        ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text("Belum punya akun?"),
+            TextButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                );
+              },
+              child: const Text(
+                'Daftar',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -313,7 +246,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                           'assets/Logo.png',
                           width: 100,
                           height: 100,
-                          fit: BoxFit.contain,
                         ),
                       ),
                     ),
@@ -335,8 +267,8 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                   isLoading
                       ? const CircularProgressIndicator()
                       : _buildLoginButton(),
-                  const SizedBox(height: 20),
-                  _buildRegisterLink(),
+                  const SizedBox(height: 10),
+                  _buildBottomLinks(),
                 ],
               ),
             ),
