@@ -21,7 +21,7 @@ class Homepage extends StatefulWidget {
 class _HomepageState extends State<Homepage> {
   int _selectedIndex = 0;
 
-  late List<Widget> _pages;
+  late final List<Widget> _pages;
 
   @override
   void initState() {
@@ -29,7 +29,7 @@ class _HomepageState extends State<Homepage> {
     _pages = [
       BukuPage(title: 'Daftar Buku', namaAnggota: widget.namaAnggota),
       PinjamanPage(title: 'Peminjaman', selectedBooks: const []),
-      PengembalianPage(title: 'Pengembalian'),
+      PengembalianPage(title: 'Pengembalian', namaAnggota: widget.namaAnggota),
       const ProfilePage(),
     ];
   }
@@ -38,21 +38,6 @@ class _HomepageState extends State<Homepage> {
     setState(() {
       _selectedIndex = index;
     });
-  }
-
-  String _getHeaderTitle() {
-    switch (_selectedIndex) {
-      case 0:
-        return 'Daftar Buku';
-      case 1:
-        return 'Riwayat Peminjaman';
-      case 2:
-        return 'Riwayat Pengembalian';
-      case 3:
-        return 'Profil Anggota';
-      default:
-        return '';
-    }
   }
 
   @override

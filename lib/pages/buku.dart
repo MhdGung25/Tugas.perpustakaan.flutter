@@ -63,12 +63,12 @@ class _BukuPageState extends State<BukuPage> with TickerProviderStateMixin {
       if (response.statusCode == 200) {
         final body = json.decode(response.body);
         if (body is Map<String, dynamic> && body['data'] is List) {
-          final Set<String> judulUnik = {};
+          final Set<String> kodeUnik = {};
           final filtered =
               body['data'].where((buku) {
-                final judul = buku['judul']?.toString().trim() ?? '';
-                if (judulUnik.contains(judul)) return false;
-                judulUnik.add(judul);
+                final kode = buku['kode_buku']?.toString().trim() ?? '';
+                if (kodeUnik.contains(kode)) return false;
+                kodeUnik.add(kode);
                 return true;
               }).toList();
 
@@ -125,11 +125,11 @@ class _BukuPageState extends State<BukuPage> with TickerProviderStateMixin {
       return;
     }
 
-    final sudahAda = bukuPinjaman.any(
-      (item) => item['id_buku'] == buku['id_buku'],
-    );
+    final kode = buku['kode_buku'];
+    final sudahAda = bukuPinjaman.any((item) => item['kode_buku'] == kode);
+
     if (sudahAda) {
-      _showMessage("Buku sudah dipilih", isError: true);
+      _showMessage("Buku dengan kode yang sama sudah dipilih", isError: true);
       return;
     }
 
@@ -154,6 +154,8 @@ class _BukuPageState extends State<BukuPage> with TickerProviderStateMixin {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Text("Kode Buku: ${buku['kode_buku'] ?? '-'}"),
+                const SizedBox(height: 8),
                 Text("Pengarang: ${buku['pengarang'] ?? '-'}"),
                 const SizedBox(height: 8),
                 Text(
@@ -255,12 +257,15 @@ class _BukuPageState extends State<BukuPage> with TickerProviderStateMixin {
                           bukuPinjaman
                               .map(
                                 (buku) => Chip(
-                                  label: Text(buku['judul'] ?? '-'),
+                                  label: Text(
+                                    "${buku['kode_buku'] ?? ''} - ${buku['judul'] ?? '-'}",
+                                  ),
                                   onDeleted: () {
                                     setState(() {
                                       bukuPinjaman.removeWhere(
                                         (item) =>
-                                            item['id_buku'] == buku['id_buku'],
+                                            item['kode_buku'] ==
+                                            buku['kode_buku'],
                                       );
                                     });
                                     _showMessage("Buku dibatalkan");
@@ -279,7 +284,7 @@ class _BukuPageState extends State<BukuPage> with TickerProviderStateMixin {
                           final status = getStatus(buku);
                           final sudahDipinjam = status == 'dipinjam';
                           final sudahDipilih = bukuPinjaman.any(
-                            (item) => item['id_buku'] == buku['id_buku'],
+                            (item) => item['kode_buku'] == buku['kode_buku'],
                           );
 
                           return GestureDetector(
@@ -296,7 +301,9 @@ class _BukuPageState extends State<BukuPage> with TickerProviderStateMixin {
                                   color:
                                       sudahDipinjam ? Colors.grey : Colors.blue,
                                 ),
-                                title: Text(buku['judul'] ?? '-'),
+                                title: Text(
+                                  "${buku['kode_buku'] ?? '---'} - ${buku['judul'] ?? '-'}",
+                                ),
                                 subtitle: Text(
                                   "Pengarang: ${buku['pengarang'] ?? '-'}",
                                 ),

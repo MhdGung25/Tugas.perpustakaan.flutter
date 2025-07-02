@@ -21,24 +21,24 @@ class PinjamanPage extends StatefulWidget {
 
 class _PinjamanPageState extends State<PinjamanPage>
     with SingleTickerProviderStateMixin {
-  late List<dynamic> bukuPinjaman;
-  late AnimationController _controller;
-  late Animation<double> _animation;
+  List<Map<String, dynamic>> bukuDipilih = [];
+  int lamaPinjamHari = 1;
   bool isLoading = false;
+
   String? anggotaId;
   String? userId;
 
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
   final Color primaryBlue = const Color(0xFF1E3A8A);
   final Color lightBlue = const Color(0xFF3B82F6);
-  final Color accentBlue = const Color(0xFF60A5FA);
-  final Color paleBlue = const Color(0xFFDBEAFE);
-  final Color backgroundBlue = const Color(0xFFF8FAFC);
   final Color cardBlue = const Color(0xFFEFF6FF);
+  final Color backgroundBlue = const Color(0xFFF8FAFC);
 
   @override
   void initState() {
     super.initState();
-    bukuPinjaman = [];
     _loadUserSession();
     _controller = AnimationController(
       duration: const Duration(milliseconds: 1000),
@@ -56,29 +56,85 @@ class _PinjamanPageState extends State<PinjamanPage>
     });
   }
 
-  void pinjamBuku(Map<String, dynamic> buku) {
-    if (bukuPinjaman.length >= 3) {
+  void toggleBuku(Map<String, dynamic> buku) {
+    setState(() {
+      if (bukuDipilih.any((b) => b['id'] == buku['id'])) {
+        bukuDipilih.removeWhere((b) => b['id'] == buku['id']);
+      } else {
+        if (bukuDipilih.length < 3 &&
+            buku['status']?.toLowerCase() != 'dipinjam') {
+          bukuDipilih.add(buku);
+        }
+      }
+    });
+  }
+
+  Future<void> _submitPinjaman() async {
+    if (bukuDipilih.isEmpty) {
       _showCustomSnackBar(
-        "Maksimal 3 buku dapat dipinjam",
+        "Pilih setidaknya 1 buku",
         Colors.orange,
         Icons.warning,
       );
       return;
     }
 
-    if (buku['status']?.toLowerCase() == 'dipinjam') {
-      _showCustomSnackBar("Buku sedang dipinjam", Colors.red, Icons.lock);
-      return;
-    }
+    setState(() => isLoading = true);
 
-    bool isAlreadyBorrowed = bukuPinjaman.any((b) => b['id'] == buku['id']);
-    if (isAlreadyBorrowed) {
-      _showCustomSnackBar("Buku sudah dipilih", Colors.red, Icons.error);
-      return;
-    }
+    final url = Uri.parse('http://192.168.1.27:8000/api/peminjaman');
+    final tanggalPinjam = DateTime.now();
+    final tanggalKembali = tanggalPinjam.add(Duration(days: lamaPinjamHari));
 
-    setState(() => bukuPinjaman.add(buku));
-    _showCustomSnackBar("Buku ditambahkan", Colors.green, Icons.check_circle);
+    try {
+      for (var buku in bukuDipilih) {
+        final body = {
+          'anggota_id': anggotaId,
+          'buku_id': buku['id'],
+          'tanggal_pinjam': tanggalPinjam.toIso8601String(),
+          'tanggal_kembali': tanggalKembali.toIso8601String(),
+        };
+
+        final response = await http.post(
+          url,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(body),
+        );
+
+        if (response.statusCode != 200 && response.statusCode != 201) {
+          final errorData = jsonDecode(response.body);
+          _showCustomSnackBar(
+            "Gagal meminjam buku: ${errorData['message'] ?? 'Terjadi kesalahan'}",
+            Colors.red,
+            Icons.error,
+          );
+          return;
+        }
+      }
+
+      setState(() {
+        isLoading = false;
+        bukuDipilih.clear();
+      });
+
+      _showCustomSnackBar(
+        "Pinjaman berhasil!",
+        Colors.green,
+        Icons.check_circle,
+      );
+
+      Future.delayed(const Duration(seconds: 1), () {
+        if (mounted) {
+          Navigator.pushReplacementNamed(
+            context,
+            '/pengembalian',
+            arguments: {'refresh': true, 'show_success': true},
+          );
+        }
+      });
+    } catch (e) {
+      setState(() => isLoading = false);
+      _showCustomSnackBar("Kesalahan koneksi: $e", Colors.red, Icons.error);
+    }
   }
 
   void _showCustomSnackBar(String message, Color color, IconData icon) {
@@ -99,215 +155,68 @@ class _PinjamanPageState extends State<PinjamanPage>
     );
   }
 
-  Future<void> _submitPinjaman() async {
-    final prefs = await SharedPreferences.getInstance();
-    final anggotaId = prefs.getString('anggota_id');
-    final userId = prefs.getString('user_id');
-
-    final url = Uri.parse('http://192.168.1.9:8000/api/peminjaman');
-    final body = {
-      "tanggal_pinjaman": DateTime.now().toIso8601String(),
-      "lama_pinjaman": 7,
-      "keterangan": "Pinjaman Buku",
-      "anggota_id": anggotaId,
-      "user_id": userId,
-      "buku":
-          bukuPinjaman.map((b) => {"buku_id": b['id'], "jumlah": 1}).toList(),
-    };
-
-    setState(() => isLoading = true);
-
-    try {
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(body),
-      );
-
-      setState(() => isLoading = false);
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        _showCustomSnackBar(
-          "Pinjaman berhasil",
-          Colors.green,
-          Icons.check_circle,
-        );
-        setState(() => bukuPinjaman.clear());
-      } else {
-        _showCustomSnackBar("Gagal: ${response.body}", Colors.red, Icons.error);
-      }
-    } catch (e) {
-      setState(() => isLoading = false);
-      _showCustomSnackBar("Error: $e", Colors.red, Icons.error);
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: backgroundBlue,
-      appBar: AppBar(
-        title: Text(
-          widget.title,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
-        backgroundColor: primaryBlue,
-        foregroundColor: Colors.white,
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [primaryBlue, lightBlue]),
-          ),
-        ),
-      ),
+      appBar: AppBar(title: Text(widget.title), backgroundColor: primaryBlue),
       body:
           isLoading
-              ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(lightBlue),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      "Memproses peminjaman...",
-                      style: TextStyle(color: primaryBlue),
-                    ),
-                  ],
-                ),
-              )
+              ? const Center(child: CircularProgressIndicator())
               : Column(
                 children: [
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.book, color: lightBlue),
-                            const SizedBox(width: 8),
-                            Text(
-                              "Dipilih (${bukuPinjaman.length}/3)",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: primaryBlue,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        ...bukuPinjaman.map(
-                          (b) => ListTile(
-                            title: Text(b['judul'] ?? ''),
-                            subtitle: Text(
-                              "Pengarang: ${b['pengarang'] ?? '-'}",
-                            ),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed:
-                                  () => setState(() => bukuPinjaman.remove(b)),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                   Expanded(
-                    child: ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: widget.selectedBooks.length,
-                      itemBuilder: (context, index) {
-                        final buku = widget.selectedBooks[index];
-                        final isSelected = bukuPinjaman.any(
-                          (b) => b['id'] == buku['id'],
-                        );
-                        final status =
-                            buku['status']?.toLowerCase() == 'dipinjam'
-                                ? 'Dipinjam'
-                                : 'Tersedia';
-                        final statusColor =
-                            status == 'Dipinjam' ? Colors.red : Colors.green;
-
-                        return Card(
-                          color: cardBlue,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          margin: const EdgeInsets.only(bottom: 12),
-                          child: ListTile(
-                            leading: Icon(Icons.menu_book, color: lightBlue),
-                            title: Text(
-                              buku['judul'] ?? '',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: primaryBlue,
+                    child: ListView(
+                      children:
+                          widget.selectedBooks.map((buku) {
+                            final selected = bukuDipilih.any(
+                              (b) => b['id'] == buku['id'],
+                            );
+                            return CheckboxListTile(
+                              title: Text(buku['judul'] ?? 'Tanpa Judul'),
+                              subtitle: Text(
+                                "Pengarang: ${buku['pengarang'] ?? '-'}",
                               ),
-                            ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "Pengarang: ${buku['pengarang'] ?? '-'}",
-                                  style: TextStyle(
-                                    color: primaryBlue.withOpacity(0.7),
-                                  ),
-                                ),
-                                Text(
-                                  "Status: $status",
-                                  style: TextStyle(color: statusColor),
-                                ),
-                              ],
-                            ),
-                            trailing: IconButton(
-                              icon: Icon(
-                                isSelected
-                                    ? Icons.check_circle
-                                    : Icons.add_circle_outline,
-                                color: isSelected ? Colors.green : lightBlue,
-                              ),
-                              onPressed:
-                                  isSelected ? null : () => pinjamBuku(buku),
-                            ),
-                          ),
-                        );
-                      },
+                              value: selected,
+                              onChanged: (checked) => toggleBuku(buku),
+                              activeColor: lightBlue,
+                            );
+                          }).toList(),
                     ),
                   ),
                   Padding(
                     padding: const EdgeInsets.all(16),
-                    child: ScaleTransition(
-                      scale: _animation,
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: _submitPinjaman,
-                          icon: const Icon(Icons.check),
-                          label: const Text(
-                            "Konfirmasi Peminjaman",
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
+                    child: Column(
+                      children: [
+                        TextFormField(
+                          initialValue: lamaPinjamHari.toString(),
+                          keyboardType: TextInputType.number,
+                          decoration: InputDecoration(
+                            labelText: 'Lama pinjam (hari)',
+                            border: OutlineInputBorder(),
                           ),
+                          onChanged: (value) {
+                            final hari = int.tryParse(value);
+                            if (hari != null && hari >= 1 && hari <= 30) {
+                              setState(() => lamaPinjamHari = hari);
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        ElevatedButton.icon(
+                          onPressed: _submitPinjaman,
+                          icon: const Icon(Icons.check_circle),
+                          label: const Text("Konfirmasi Peminjaman"),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: lightBlue,
                             foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
                             ),
                           ),
                         ),
-                      ),
+                      ],
                     ),
                   ),
                 ],
