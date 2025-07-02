@@ -21,6 +21,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _confirmPasswordController = TextEditingController();
 
   bool _isLoading = false;
+  bool _showPassword = false;
+  bool _showConfirmPassword = false;
 
   final Color _primaryColor = const Color(0xFF4361EE);
   final Color _bgColor = const Color(0xFFF5F7FA);
@@ -39,7 +41,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       try {
         final response = await http.post(
-          Uri.parse('http://192.168.1.28:8000/api/register'),
+          Uri.parse('http://192.168.1.27:8000/api/register'),
           headers: {"Content-Type": "application/json"},
           body: jsonEncode(body),
         );
@@ -54,6 +56,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               backgroundColor: Colors.green,
             ),
           );
+          await Future.delayed(const Duration(seconds: 1));
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (_) => const LoginPage()),
@@ -109,10 +112,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
               key: _formKey,
               child: Column(
                 children: [
-                  Image.asset('assets/Logo.png', height: 90),
+                  Image.asset('assets/Logo.png', height: 80),
                   const SizedBox(height: 16),
                   Text(
-                    'Daftar Akun Baru',
+                    'Buat Akun Baru',
                     style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
@@ -125,7 +128,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     label: 'Nama Lengkap',
                     controller: _fullNameController,
                     hintText: 'Masukkan nama lengkap',
-                    validator: (val) => val!.isEmpty ? 'Wajib diisi' : null,
+                    validator:
+                        (val) =>
+                            val!.isEmpty ? 'Nama lengkap wajib diisi' : null,
                   ),
                   const SizedBox(height: 16),
 
@@ -167,7 +172,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     label: 'Password',
                     controller: _passwordController,
                     hintText: 'Masukkan password',
-                    obscureText: true,
+                    obscureText: !_showPassword,
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _showPassword ? Icons.visibility_off : Icons.visibility,
+                      ),
+                      onPressed:
+                          () => setState(() => _showPassword = !_showPassword),
+                    ),
                     validator: (val) {
                       if (val == null || val.isEmpty) {
                         return 'Password wajib diisi';
@@ -183,7 +195,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     label: 'Konfirmasi Password',
                     controller: _confirmPasswordController,
                     hintText: 'Ulangi password',
-                    obscureText: true,
+                    obscureText: !_showConfirmPassword,
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _showConfirmPassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                      ),
+                      onPressed:
+                          () => setState(
+                            () => _showConfirmPassword = !_showConfirmPassword,
+                          ),
+                    ),
                     validator: (val) {
                       if (val != _passwordController.text) {
                         return 'Password tidak cocok';
@@ -203,7 +226,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
                         ),
-                        elevation: 3,
                       ),
                       child:
                           _isLoading
@@ -214,8 +236,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               : const Text(
                                 'DAFTAR',
                                 style: TextStyle(
-                                  fontSize: 16,
                                   fontWeight: FontWeight.bold,
+                                  fontSize: 16,
                                   color: Colors.white,
                                 ),
                               ),
@@ -264,6 +286,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     required TextEditingController controller,
     String? hintText,
     bool obscureText = false,
+    Widget? suffixIcon,
     String? Function(String?)? validator,
   }) {
     return Column(
@@ -284,13 +307,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
           validator: validator,
           decoration: InputDecoration(
             hintText: hintText,
-            hintStyle: TextStyle(color: Colors.grey.shade500),
+            suffixIcon: suffixIcon,
             contentPadding: const EdgeInsets.symmetric(
-              vertical: 14,
               horizontal: 16,
+              vertical: 14,
             ),
             filled: true,
             fillColor: Colors.white,
+            hintStyle: TextStyle(color: Colors.grey.shade500),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: _primaryColor.withOpacity(0.4)),

@@ -1,6 +1,6 @@
 class AppConstants {
   //development
-  static const String BASE_URL = "http://192.168.1.8:8000/";
+  static const String BASE_URL = "http://192.168.1.27:8000/";
   //dev
 
   //production
